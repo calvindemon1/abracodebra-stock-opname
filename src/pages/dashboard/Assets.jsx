@@ -33,10 +33,10 @@ export default function Assets() {
   const paginatedData = () => {
     if (!items()) return [];
     const start = (page() - 1) * limit();
-    return items()?.data?.slice(start, start + limit());
+    return items()?.slice(start, start + limit());
   };
 
-  const totalPages = () => Math.ceil((items()?.data?.length || 1) / limit());
+  const totalPages = () => Math.ceil((items()?.length || 1) / limit());
 
   //   onMount(() => {
   //     console.log("Assets component mounted:", items()?.data);
@@ -110,11 +110,11 @@ export default function Assets() {
           <div class="p-4 text-center">Loading...</div>
         </Show>
 
-        <Show when={!items.loading && items()?.data?.length === 0}>
+        <Show when={!items.loading && items()?.length === 0}>
           <div class="p-4 text-center text-gray-500">Tidak ada data asset</div>
         </Show>
 
-        <Show when={!items.loading && items()?.data?.length > 0}>
+        <Show when={!items.loading && items()?.length > 0}>
           <div class="overflow-y-auto max-h-[60vh] border">
             <table class="w-full text-sm border-collapse">
               <thead class="bg-gray-200 sticky top-0">
