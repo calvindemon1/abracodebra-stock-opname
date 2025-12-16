@@ -29,7 +29,7 @@ export default function LoadingOutList() {
         <div class="space-x-2">
           <button
             class="bg-blue-600 text-white px-4 py-2 rounded"
-            onClick={() => navigate("/admin/load-in/create")}
+            onClick={() => navigate("/admin/load-out/create")}
           >
             + Create
           </button>
@@ -69,14 +69,14 @@ export default function LoadingOutList() {
                     <td class="border p-2 flex gap-2 justify-center">
                       <button
                         class="text-blue-600"
-                        onClick={() => navigate(`/admin/load-in/${row.id}`)}
+                        onClick={() => navigate(`/admin/load-out/${row.id}`)}
                       >
                         <Eye size={18} />
                       </button>
                       <button
                         class="text-yellow-600"
                         onClick={() =>
-                          navigate(`/admin/load-in/create/${row.id}`)
+                          navigate(`/admin/load-out/edit/${row.id}`)
                         }
                       >
                         <Edit size={18} />

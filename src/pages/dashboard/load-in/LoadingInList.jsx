@@ -76,7 +76,7 @@ export default function LoadingInList() {
                       <button
                         class="text-yellow-600"
                         onClick={() =>
-                          navigate(`/admin/load-in/create/${row.id}`)
+                          navigate(`/admin/load-in/edit/${row.id}`)
                         }
                       >
                         <Edit size={18} />

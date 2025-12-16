@@ -262,3 +262,16 @@ code {
 ::-webkit-scrollbar-thumb:hover {
   background: #888;
 }
+
+@keyframes binaryScroll {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(-100%);
+  }
+}
+
+.animate-binary {
+  animation: binaryScroll 18s linear infinite;
+}

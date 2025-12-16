@@ -76,3 +76,42 @@ export default function Login() {
     </div>
   );
 }
+
+// import logoAbra from "../../assets/img/logo-abracodebra.png";
+
+// // 🔥 Generate binary random dengan spasi antar grup
+// function generateRandomBinaryRow(groups = 40) {
+//   let row = "";
+//   for (let i = 0; i < groups; i++) {
+//     const groupSize = Math.floor(Math.random() * 4) + 4; // 4–8 digit
+//     let group = "";
+//     for (let j = 0; j < groupSize; j++) {
+//       group += Math.random() > 0.5 ? "1" : "0";
+//     }
+//     row += group + " ";
+//   }
+//   return row;
+// }
+
+// export default function Login() {
+//   const binaryRows = Array(300)
+//     .fill(0)
+//     .map(() => generateRandomBinaryRow())
+//     .join("\n");
+
+//   return (
+//     <div class="relative w-screen h-screen flex items-center justify-center bg-[#000519] overflow-hidden">
+//       {/* Hacker Random Binary Background */}
+//       <div
+//         class="absolute inset-0 opacity-25 pointer-events-none animate-binary
+//                text-[#37ff00] font-mono text-[25px]"
+//         style="white-space: pre; line-height: 1.05; letter-spacing: 0.5em;"
+//       >
+//         {binaryRows + "\n" + binaryRows}
+//       </div>
+
+//       {/* Logo */}
+//       <img src={logoAbra} alt="logo" class="z-10 scale-125" />
+//     </div>
+//   );
+// }

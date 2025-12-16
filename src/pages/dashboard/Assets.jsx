@@ -75,7 +75,7 @@ export default function Assets() {
 
   return (
     <div class="p-6 space-y-4">
-      {console.log("API RESPONSE:", items())}
+      {/* {console.log("API RESPONSE:", items())} */}
 
       <div class="flex justify-between items-center">
         <h1 class="text-2xl font-bold">Assets Dashboard</h1>
@@ -97,8 +97,8 @@ export default function Assets() {
           { label: "Terlama", value: "oldest" },
         ]}
         locations={[
-          { id: 1, name: "Gudang" },
-          { id: 2, name: "Kantor Utama" },
+          { id: 1, name: "Office (Kembar)" },
+          { id: 2, name: "Event" },
         ]}
         conditions={[
           { id: 1, name: "Baik" },
@@ -143,7 +143,7 @@ export default function Assets() {
                         <button
                           class="text-blue-600"
                           onClick={() =>
-                            navigate(`/admin/asset/create/${item.id}`)
+                            navigate(`/admin/asset/edit/${item.id}`)
                           }
                         >
                           <Edit size={20} />

@@ -93,10 +93,17 @@ export default function AssetCreate() {
 
     // Kalau edit
     if (isEdit) {
-      const data =
+      const res =
         activeTab() === "pc"
           ? await ItemsPCService.get(params.id)
           : await ItemsService.get(params.id);
+
+      let data = res.data?.data || res.data || res;
+
+      // 🔥 FIX ARRAY
+      if (Array.isArray(data)) {
+        data = data[0];
+      }
 
       setForm(data);
       setSavedCode(data.asset_code);
@@ -168,7 +175,7 @@ export default function AssetCreate() {
       setOpenSection(0);
 
       // opsional: kalau mau balik ke halaman yang sama kosong
-      // navigate("/admin/asset/create");
+      navigate("/admin/asset");
     } catch (err) {
       Swal.fire({
         icon: "error",
@@ -266,7 +273,7 @@ export default function AssetCreate() {
 
   return (
     <div class="p-6 space-y-6 overflow-y-auto max-h-[90vh]">
-      <div class="flex gap-2 mb-4">
+      <div class="flex gap-2 mb-4" hidden={isEdit}>
         <button
           class={`px-4 py-2 rounded-t font-semibold ${
             activeTab() === "general" ? "bg-blue-600 text-white" : "bg-gray-200"
@@ -303,7 +310,13 @@ export default function AssetCreate() {
           Kembali
         </button>
       </div>
-
+      {/* QR */}
+      {savedCode() && (
+        <div class="my-4">
+          <h2 class="text-lg font-semibold mb-2">QR untuk: {savedCode()}</h2>
+          <QRComponent urlQr={savedCode()} />
+        </div>
+      )}
       {/* FORM SECTION */}
       <For each={sections()}>
         {(sec, index) => {
@@ -427,19 +440,11 @@ export default function AssetCreate() {
 
       {/* BUTTON */}
       <button
-        class="bg-blue-600 text-white px-6 py-2 rounded font-semibold w-full"
+        class="w-full mb-24 bg-blue-600 text-white px-6 py-2 rounded font-semibold"
         onClick={submit}
       >
         {isEdit ? "Update Asset" : "Simpan Asset"}
       </button>
-
-      {/* QR */}
-      {savedCode() && (
-        <div class="mt-4">
-          <h2 class="text-lg font-semibold mb-2">QR untuk: {savedCode()}</h2>
-          <QRComponent urlQr={savedCode()} />
-        </div>
-      )}
     </div>
   );
 }

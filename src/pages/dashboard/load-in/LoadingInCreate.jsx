@@ -17,22 +17,33 @@ export default function LoadingInCreate() {
     pic_load_in: "",
     load_in_date: "",
     load_in_notes: "",
-    items: [], // { item_id, qty, notes, location_id }
+    items: [],
   };
 
   const [form, setForm] = createSignal(defaultForm);
   const [itemsOptions, setItemsOptions] = createSignal([]);
-  const [scanBuffer, setScanBuffer] = createSignal("");
   const [eventsOptions, setEventsOptions] = createSignal([]);
   const [locationsOptions, setLocationsOptions] = createSignal([]);
+  const [scanBuffer, setScanBuffer] = createSignal("");
+  const [itemSearch, setItemSearch] = createSignal("");
 
-  // Filter item berdasarkan event
-  const filteredItems = createMemo(() => {
-    const allItems = itemsOptions();
-    return allItems && allItems.length ? allItems : [];
+  // 🔍 Search tapi hanya buat hide/show items list
+  const filteredFormItems = createMemo(() => {
+    const search = itemSearch().toLowerCase();
+    const rows = form().items || [];
+
+    if (!search) return rows;
+
+    return rows.filter((it) => {
+      const opt = itemsOptions().find((x) => x.id == it.item_id);
+      return (
+        opt?.asset_code?.toLowerCase().includes(search) ||
+        opt?.asset_name?.toLowerCase().includes(search) ||
+        opt?.item_name?.toLowerCase().includes(search)
+      );
+    });
   });
 
-  // Ambil semua data master
   onMount(async () => {
     try {
       const [resItems, resEvents, resLocations] = await Promise.all([
@@ -48,29 +59,40 @@ export default function LoadingInCreate() {
       console.error("Gagal ambil data:", e);
     }
 
+    // EDIT MODE
     if (isEdit) {
-      const data = await LoadInService.get(params.id);
+      const res = await LoadInService.get(params.id);
+      let data = res.data?.data || res.data || res;
+
+      if (Array.isArray(data)) data = data[0];
+      if (typeof data === "object" && data !== null && data[0]) data = data[0];
+
       setForm({
-        event_id: data.event_id,
-        pic_load_in: data.pic_load_in,
-        load_in_date: data.load_in_date,
-        load_in_notes: data.load_in_notes,
-        items: data.items || [],
+        event_id: data?.event_id ?? "",
+        pic_load_in: data?.pic_load_in ?? "",
+        load_in_date: data?.load_in_date ?? "",
+        load_in_notes: data?.load_in_notes ?? "",
+        items: (data?.items ?? []).map((it) => ({
+          item_id: String(it.item_id),
+          qty: it.qty || 1,
+          notes: it.load_in_item_notes || "",
+          location_id: String(it.location_id || ""),
+          location_notes: it.location_notes || "",
+        })),
       });
     }
 
-    // Handler scanner fisik
+    // Scanner fisik
     const handleKey = (e) => {
       if (e.key === "Enter") {
         e.preventDefault();
         const code = scanBuffer().trim();
         if (!code) return;
 
-        const found = filteredItems().find(
+        const found = itemsOptions().find(
           (it) =>
             it.asset_code?.toLowerCase() === code.toLowerCase() ||
-            it.asset_name?.toLowerCase() === code.toLowerCase() ||
-            it.item_name?.toLowerCase() === code.toLowerCase()
+            it.asset_name?.toLowerCase() === code.toLowerCase()
         );
 
         if (found) {
@@ -78,9 +100,7 @@ export default function LoadingInCreate() {
           Swal.fire({
             icon: "success",
             title: "Item ditambahkan",
-            text: `${found.asset_code} - ${
-              found.asset_name || found.item_name || found.name
-            }`,
+            text: `${found.asset_code} - ${found.asset_name}`,
             timer: 800,
             showConfirmButton: false,
           });
@@ -93,6 +113,8 @@ export default function LoadingInCreate() {
             showConfirmButton: false,
           });
         }
+
+        handleAddByCode(code);
 
         setScanBuffer("");
       } else {
@@ -107,17 +129,15 @@ export default function LoadingInCreate() {
   // Update field utama
   const updateField = (key, val) => {
     if (key === "event_id") {
-      // cari lokasi default dari event terpilih
       const selectedEvent = eventsOptions().find((ev) => ev.id == val);
       const defaultLoc = selectedEvent?.location_id || "";
 
       setForm((prev) => ({
         ...prev,
         event_id: val,
-        // reset items biar gak nyampur
         items: prev.items.map((it) => ({
           ...it,
-          location_id: defaultLoc, // auto-update semua item existing
+          location_id: String(defaultLoc),
         })),
       }));
     } else {
@@ -129,6 +149,7 @@ export default function LoadingInCreate() {
   const addItem = (itemId = "") => {
     const foundItem = itemsOptions().find((it) => it.id == itemId);
     const currentEvent = eventsOptions().find((ev) => ev.id == form().event_id);
+
     const defaultLocation =
       currentEvent?.location_id || foundItem?.location_id || "";
 
@@ -136,12 +157,45 @@ export default function LoadingInCreate() {
       ...prev,
       items: [
         ...prev.items,
-        { item_id: itemId, qty: 1, notes: "", location_id: defaultLocation },
+        {
+          item_id: String(itemId),
+          qty: 1,
+          notes: foundItem?.notes || "",
+          location_id: String(defaultLocation),
+        },
       ],
     }));
   };
 
-  // Update item per index
+  const handleAddByCode = (code) => {
+    if (!code) return;
+
+    const found = itemsOptions().find(
+      (it) =>
+        it.asset_code?.toLowerCase() === code.toLowerCase() ||
+        it.asset_name?.toLowerCase() === code.toLowerCase()
+    );
+
+    if (found) {
+      addItem(found.id);
+      Swal.fire({
+        icon: "success",
+        title: "Item ditambahkan",
+        text: `${found.asset_code} - ${found.asset_name}`,
+        timer: 800,
+        showConfirmButton: false,
+      });
+    } else {
+      Swal.fire({
+        icon: "warning",
+        title: "Item tidak ditemukan",
+        text: code,
+        timer: 1000,
+        showConfirmButton: false,
+      });
+    }
+  };
+
   const updateItem = (idx, key, val) =>
     setForm((prev) => {
       const arr = prev.items.map((it, i) =>
@@ -150,14 +204,12 @@ export default function LoadingInCreate() {
       return { ...prev, items: arr };
     });
 
-  // Hapus item
   const removeItem = (idx) =>
     setForm((prev) => ({
       ...prev,
       items: prev.items.filter((_, i) => i !== idx),
     }));
 
-  // Submit form
   const submit = async (e) => {
     e.preventDefault();
     try {
@@ -167,7 +219,6 @@ export default function LoadingInCreate() {
           item_id: it.item_id,
           location_id: it.location_id,
           load_in_item_notes: it.notes || "",
-          location_notes: it.location_notes || "",
         })),
       };
 
@@ -192,7 +243,7 @@ export default function LoadingInCreate() {
         {isEdit ? "Edit Loading In" : "Create Loading In"}
       </h1>
 
-      {/* Scanner hidden input */}
+      {/* Scanner input */}
       <input
         type="text"
         class="opacity-0 absolute pointer-events-none"
@@ -200,45 +251,51 @@ export default function LoadingInCreate() {
       />
 
       <form class="space-y-4" onSubmit={submit}>
-        <div>
-          <label>Event</label>
-          <select
-            value={form().event_id}
-            onInput={(e) => updateField("event_id", e.currentTarget.value)}
-            class="border p-2 w-full rounded"
-          >
-            <option value="">Pilih Event</option>
-            <For each={eventsOptions()}>
-              {(ev) => (
-                <option value={ev.id}>
-                  {ev.event_name || ev.name || `Event #${ev.id}`}
-                </option>
-              )}
-            </For>
-          </select>
+        <div class="grid grid-cols-3 gap-3">
+          {/* Event */}
+          <div>
+            <label class="block mb-1">Event</label>
+            <select
+              value={form().event_id}
+              onInput={(e) => updateField("event_id", e.currentTarget.value)}
+              class="border w-full rounded px-3 h-10"
+            >
+              <option value="">Pilih Event</option>
+              <For each={eventsOptions()}>
+                {(ev) => (
+                  <option value={ev.id}>{ev.event_name || ev.name}</option>
+                )}
+              </For>
+            </select>
+          </div>
+
+          {/* PIC */}
+          <div>
+            <label class="block mb-1">PIC Load In</label>
+            <input
+              value={form().pic_load_in}
+              onInput={(e) => updateField("pic_load_in", e.currentTarget.value)}
+              class="border w-full rounded px-3 h-10"
+            />
+          </div>
+
+          {/* Date */}
+          <div>
+            <label class="block mb-1">Load In Date</label>
+            <input
+              type="date"
+              value={form().load_in_date}
+              onInput={(e) =>
+                updateField("load_in_date", e.currentTarget.value)
+              }
+              class="border w-full rounded px-3 h-10"
+            />
+          </div>
         </div>
 
+        {/* Notes */}
         <div>
-          <label>PIC Load In</label>
-          <input
-            value={form().pic_load_in}
-            onInput={(e) => updateField("pic_load_in", e.currentTarget.value)}
-            class="border p-2 w-full rounded"
-          />
-        </div>
-
-        <div>
-          <label>Load In Date</label>
-          <input
-            type="date"
-            value={form().load_in_date}
-            onInput={(e) => updateField("load_in_date", e.currentTarget.value)}
-            class="border p-2 w-full rounded"
-          />
-        </div>
-
-        <div>
-          <label>Notes</label>
+          <label class="block mb-1">Notes</label>
           <textarea
             value={form().load_in_notes}
             onInput={(e) => updateField("load_in_notes", e.currentTarget.value)}
@@ -246,59 +303,39 @@ export default function LoadingInCreate() {
           />
         </div>
 
-        {/* Items Section */}
+        {/* Items */}
         <div>
           <div class="flex justify-between items-center mb-2">
-            <h3 class="font-semibold">Items</h3>
+            <div>
+              <h3 class="font-semibold mb-2">Items</h3>
 
-            {/* Input manual scan */}
-            <div class="flex gap-2 items-center">
+              {/* Search hanya hide/show */}
               <input
                 type="text"
-                placeholder="Scan / Input Kode Asset lalu Enter"
-                class="border p-2 rounded w-60"
-                disabled={!form().event_id}
+                placeholder="Cari item..."
+                class="border px-3 py-2 rounded w-60"
+                onInput={(e) => setItemSearch(e.currentTarget.value)}
+              />
+            </div>
+
+            <div class="flex gap-2 items-center">
+              {/* MANUAL INPUT */}
+              <input
+                type="text"
+                placeholder="Scan / ketik asset code"
+                class="border px-3 py-2 rounded w-64"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
-                    const code = e.currentTarget.value.trim();
-                    if (!code) return;
-
-                    const found = filteredItems().find(
-                      (it) =>
-                        it.asset_code?.toLowerCase() === code.toLowerCase() ||
-                        it.asset_name?.toLowerCase() === code.toLowerCase() ||
-                        it.item_name?.toLowerCase() === code.toLowerCase()
-                    );
-
-                    if (found) {
-                      addItem(found.id);
-                      Swal.fire({
-                        icon: "success",
-                        title: "Item ditambahkan",
-                        text: `${found.asset_code} - ${
-                          found.asset_name || found.item_name || found.name
-                        }`,
-                        timer: 800,
-                        showConfirmButton: false,
-                      });
-                    } else {
-                      Swal.fire({
-                        icon: "warning",
-                        title: "Item tidak ditemukan",
-                        text: code,
-                        timer: 1000,
-                        showConfirmButton: false,
-                      });
-                    }
-
+                    handleAddByCode(e.currentTarget.value);
                     e.currentTarget.value = "";
                   }
                 }}
               />
+
               <button
                 type="button"
-                class="text-blue-600 border px-3 py-1 rounded"
+                class="text-blue-600 border px-3 py-2 rounded h-10"
                 onClick={() => addItem()}
                 disabled={!form().event_id}
               >
@@ -307,84 +344,78 @@ export default function LoadingInCreate() {
             </div>
           </div>
 
-          <For each={form().items}>
-            {(it, i) => (
-              <div class="grid grid-cols-4 gap-2 border p-2 rounded items-center">
-                {/* Item Select */}
-                <select
-                  value={it.item_id}
-                  onInput={(e) =>
-                    updateItem(i(), "item_id", e.currentTarget.value)
-                  }
-                  class="border p-2 rounded"
-                >
-                  <option value="">Pilih Item</option>
-                  {console.log("Filtered Items sekarang:", filteredItems())}
-                  <For each={filteredItems()}>
-                    {(opt) => {
-                      console.log("Rendering item option:", opt);
-                      return (
-                        <option value={opt.id}>
-                          {opt.asset_code || "NO CODE"} -{" "}
-                          {opt.asset_name || opt.name || "NO NAME"}
-                        </option>
-                      );
-                    }}
-                  </For>
-                </select>
-
-                {/* Location */}
-                <select
-                  value={it.location_id}
-                  onInput={(e) =>
-                    updateItem(i(), "location_id", e.currentTarget.value)
-                  }
-                  class="border p-2 rounded"
-                >
-                  <option value="">Pilih Lokasi</option>
-                  <For each={locationsOptions()}>
-                    {(loc) => {
-                      console.log("Rendering item option:", loc);
-                      return (
-                        <option value={loc.id}>
-                          {loc.location_name || loc.name || `Lokasi #${loc.id}`}
-                        </option>
-                      );
-                    }}
-                  </For>
-                </select>
-
-                {/* Qty */}
-                <input
-                  type="number"
-                  min="1"
-                  value={it.qty}
-                  onInput={(e) => updateItem(i(), "qty", e.currentTarget.value)}
-                  class="border p-2 rounded w-full"
-                  placeholder="Qty"
-                />
-
-                {/* Notes + Delete */}
-                <div class="flex gap-2 items-center">
-                  <input
-                    placeholder="Notes"
-                    value={it.notes}
+          {/* LIST ROW YG DI FILTER */}
+          <div class="max-h-[350px] overflow-y-auto space-y-2 pr-2 border border-black p-3 rounded">
+            <For each={filteredFormItems()}>
+              {(it, i) => (
+                <div class="grid grid-cols-4 gap-2 border p-2 rounded items-center bg-white">
+                  {/* Item */}
+                  <select
+                    value={it.item_id}
+                    class="border p-2 rounded"
                     onInput={(e) =>
-                      updateItem(i(), "notes", e.currentTarget.value)
+                      updateItem(i(), "item_id", e.currentTarget.value)
                     }
-                    class="border p-2 rounded flex-1"
-                  />
-                  <button
-                    type="button"
-                    class="text-red-600"
-                    onClick={() => removeItem(i())}
                   >
-                    <Trash size={22} />
-                  </button>
+                    <option value="">Pilih Item</option>
+                    <For each={itemsOptions()}>
+                      {(opt) => (
+                        <option value={opt.id}>
+                          {opt.asset_code} - {opt.asset_name}
+                        </option>
+                      )}
+                    </For>
+                  </select>
+
+                  {/* Location */}
+                  <select
+                    value={it.location_id}
+                    class="border p-2 rounded"
+                    onInput={(e) =>
+                      updateItem(i(), "location_id", e.currentTarget.value)
+                    }
+                  >
+                    <option value="">Pilih Lokasi</option>
+                    <For each={locationsOptions()}>
+                      {(loc) => (
+                        <option value={loc.id}>{loc.location_name}</option>
+                      )}
+                    </For>
+                  </select>
+
+                  {/* Qty */}
+                  <input
+                    type="number"
+                    min="1"
+                    value={it.qty}
+                    class="border p-2 rounded"
+                    onInput={(e) =>
+                      updateItem(i(), "qty", e.currentTarget.value)
+                    }
+                  />
+
+                  {/* Notes + Delete */}
+                  <div class="flex gap-2 items-center">
+                    <input
+                      placeholder="Notes"
+                      value={it.notes}
+                      class="border p-2 rounded flex-1"
+                      onInput={(e) =>
+                        updateItem(i(), "notes", e.currentTarget.value)
+                      }
+                    />
+                    <button
+                      type="button"
+                      class="text-red-600"
+                      onClick={() => removeItem(i())}
+                    >
+                      <Trash size={22} />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
-          </For>
+              )}
+            </For>
+          </div>
         </div>
 
         {/* Submit */}

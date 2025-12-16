@@ -46,6 +46,7 @@ export default function AppRouter() {
         <Route path="asset" component={Assets} />
         <Route path="stock-opname" component={StockOpname} />
         <Route path="asset/create" component={AssetCreate} />
+        <Route path="asset/edit/:id" component={AssetCreate} />
         <Route path="conditions" component={Conditions} />
         <Route path="locations" component={Locations} />
         <Route path="events" component={Events} />
@@ -53,8 +54,10 @@ export default function AppRouter() {
 
         <Route path="load-in" component={LoadingInList} />
         <Route path="load-in/create" component={LoadingInCreate} />
+        <Route path="load-in/edit/:id" component={LoadingInCreate} />
         <Route path="load-out" component={LoadingOutList} />
         <Route path="load-out/create" component={LoadingOutCreate} />
+        <Route path="load-out/edit/:id" component={LoadingOutCreate} />
       </Route>
 
       {/* fallback */}
