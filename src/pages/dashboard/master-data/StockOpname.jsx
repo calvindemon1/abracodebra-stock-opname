@@ -1,7 +1,7 @@
 import { createResource, For, Show } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import Swal from "sweetalert2";
-import { ItemsService } from "../../services/items";
+import { ItemsService } from "../../../services/items";
 import { CircleX, Edit } from "lucide-solid";
 
 export default function AdminHome() {

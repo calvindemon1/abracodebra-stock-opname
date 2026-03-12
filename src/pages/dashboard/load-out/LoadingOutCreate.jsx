@@ -1,331 +1,3 @@
-// import { createSignal, createMemo, onMount, For, onCleanup } from "solid-js";
-// import { useNavigate, useParams } from "@solidjs/router";
-// import Swal from "sweetalert2";
-// import { LoadOutService } from "../../../services/loadOut";
-// import { ItemsService } from "../../../services/items";
-// import { EventsService } from "../../../services/events";
-
-// import { Trash } from "lucide-solid";
-
-// export default function LoadingOutCreate() {
-//   const params = useParams();
-//   const navigate = useNavigate();
-//   const isEdit = !!params.id;
-
-//   const defaultForm = {
-//     event_id: "",
-//     pic_load_out: "",
-//     load_out_date: "",
-//     load_out_notes: "",
-//     items: [],
-//   };
-
-//   const [form, setForm] = createSignal(defaultForm);
-//   const [itemsOptions, setItemsOptions] = createSignal([]);
-//   const [eventsOptions, setEventsOptions] = createSignal([]);
-//   const [scanBuffer, setScanBuffer] = createSignal("");
-//   const [itemSearch, setItemSearch] = createSignal("");
-
-//   // 🔎 Filter KHUSUS untuk scanner / add item
-//   const filteredAddItems = createMemo(() => {
-//     const search = itemSearch().toLowerCase();
-//     const all = itemsOptions() || [];
-//     if (!search) return all;
-
-//     return all.filter(
-//       (it) =>
-//         (it.asset_code || "").toLowerCase().includes(search) ||
-//         (it.asset_name || "").toLowerCase().includes(search) ||
-//         (it.name || "").toLowerCase().includes(search)
-//     );
-//   });
-
-//   onMount(async () => {
-//     try {
-//       const [resItems, resEvents] = await Promise.all([
-//         ItemsService.list(),
-//         EventsService.list(),
-//       ]);
-
-//       setItemsOptions(resItems.data || resItems);
-//       setEventsOptions(resEvents.data || resEvents);
-//     } catch (e) {
-//       console.error("Gagal ambil data:", e);
-//     }
-
-//     if (isEdit) {
-//       const data = await LoadOutService.get(params.id);
-//       setForm({
-//         event_id: String(data.event_id || ""),
-//         pic_load_out: data.pic_load_out,
-//         load_out_date: data.load_out_date,
-//         load_out_notes: data.load_out_notes,
-//         items: (data.items ?? []).map((it) => ({
-//           item_id: String(it.item_id || ""),
-//           qty: it.qty || 1,
-//           notes: it.notes || "",
-//         })),
-//       });
-//     }
-
-//     // 🎯 Scanner
-//     const handleKey = (e) => {
-//       if (e.key === "Enter") {
-//         e.preventDefault();
-//         const code = scanBuffer().trim();
-//         if (!code) return;
-
-//         const found = itemsOptions().find(
-//           (it) =>
-//             it.asset_code?.toLowerCase() === code.toLowerCase() ||
-//             it.name?.toLowerCase() === code.toLowerCase()
-//         );
-
-//         if (found) {
-//           addItem(found.id);
-//           Swal.fire({
-//             icon: "success",
-//             title: "Item ditambahkan",
-//             text: `${found.asset_code} - ${found.asset_name || found.name}`,
-//             timer: 800,
-//             showConfirmButton: false,
-//           });
-//         } else {
-//           Swal.fire({
-//             icon: "warning",
-//             title: "Item tidak ditemukan",
-//             text: code,
-//             timer: 1000,
-//             showConfirmButton: false,
-//           });
-//         }
-
-//         setScanBuffer("");
-//       } else {
-//         setScanBuffer((prev) => prev + e.key);
-//       }
-//     };
-
-//     window.addEventListener("keypress", handleKey);
-//     onCleanup(() => window.removeEventListener("keypress", handleKey));
-//   });
-
-//   // 🧩 Helpers
-//   const updateField = (key, val) =>
-//     setForm((prev) => ({ ...prev, [key]: val }));
-
-//   const addItem = (itemId = "") =>
-//     setForm((prev) => ({
-//       ...prev,
-//       items: [...prev.items, { item_id: String(itemId), qty: 1, notes: "" }],
-//     }));
-
-//   const updateItem = (idx, key, val) =>
-//     setForm((prev) => {
-//       const arr = prev.items.map((it, i) =>
-//         i === idx ? { ...it, [key]: val } : it
-//       );
-//       return { ...prev, items: arr };
-//     });
-
-//   const removeItem = (idx) =>
-//     setForm((prev) => ({
-//       ...prev,
-//       items: prev.items.filter((_, i) => i !== idx),
-//     }));
-
-//   // 🧾 Submit
-//   const submit = async (e) => {
-//     e.preventDefault();
-//     try {
-//       if (isEdit) {
-//         await LoadOutService.update(params.id, form());
-//         Swal.fire("Berhasil", "Data berhasil diupdate", "success");
-//       } else {
-//         await LoadOutService.create(form());
-//         Swal.fire("Berhasil", "Data berhasil disimpan", "success");
-//       }
-//       navigate("/admin/load-out");
-//     } catch (err) {
-//       Swal.fire("Gagal", "Terjadi kesalahan", "error");
-//     }
-//   };
-
-//   return (
-//     <div class="p-6 space-y-4">
-//       <h1 class="text-2xl font-bold">
-//         {isEdit ? "Edit Loading Out" : "Create Loading Out"}
-//       </h1>
-
-//       {/* Scanner input (invisible) */}
-//       <input
-//         type="text"
-//         class="opacity-0 absolute pointer-events-none"
-//         autofocus
-//       />
-
-//       <form class="space-y-4" onSubmit={submit}>
-//         {/* EVENT */}
-//         <div class="grid grid-cols-3 gap-3">
-//           <div>
-//             <label>Event</label>
-//             <select
-//               value={form().event_id}
-//               onInput={(e) => updateField("event_id", e.currentTarget.value)}
-//               class="border p-2 w-full rounded h-[42px]"
-//             >
-//               <option value="">Pilih Event</option>
-//               <For each={eventsOptions()}>
-//                 {(ev) => (
-//                   <option value={String(ev.id)}>
-//                     {ev.event_name || ev.name}
-//                   </option>
-//                 )}
-//               </For>
-//             </select>
-//           </div>
-
-//           <div>
-//             <label>PIC Load Out</label>
-//             <input
-//               value={form().pic_load_out}
-//               onInput={(e) =>
-//                 updateField("pic_load_out", e.currentTarget.value)
-//               }
-//               class="border p-2 w-full rounded h-[42px]"
-//             />
-//           </div>
-
-//           <div>
-//             <label>Load Out Date</label>
-//             <input
-//               type="date"
-//               value={form().load_out_date}
-//               onInput={(e) =>
-//                 updateField("load_out_date", e.currentTarget.value)
-//               }
-//               class="border p-2 w-full rounded h-[42px]"
-//             />
-//           </div>
-//         </div>
-
-//         {/* Notes */}
-//         <div>
-//           <label>Notes</label>
-//           <textarea
-//             value={form().load_out_notes}
-//             onInput={(e) =>
-//               updateField("load_out_notes", e.currentTarget.value)
-//             }
-//             class="border p-2 w-full rounded"
-//           />
-//         </div>
-
-//         {/* Items */}
-//         <div>
-//           <div class="flex justify-between items-center mb-2">
-//             <h3 class="font-semibold">Items</h3>
-
-//             {/* Search + Add */}
-//             <div class="flex gap-2 items-center">
-//               <input
-//                 type="text"
-//                 placeholder="Cari item…"
-//                 class="border p-2 rounded w-60"
-//                 onInput={(e) => setItemSearch(e.currentTarget.value)}
-//               />
-
-//               <button
-//                 type="button"
-//                 class="text-blue-600 border px-3 py-1 rounded"
-//                 onClick={() => addItem()}
-//               >
-//                 + Add Item
-//               </button>
-//             </div>
-//           </div>
-
-//           {/* List */}
-//           <div class="space-y-2">
-//             <For each={form().items}>
-//               {(it, i) => (
-//                 <div class="grid grid-cols-3 gap-2 border p-2 rounded items-center">
-//                   {/* Item Select */}
-//                   <select
-//                     value={it.item_id}
-//                     onInput={(e) =>
-//                       updateItem(i(), "item_id", e.currentTarget.value)
-//                     }
-//                     class="border p-2 rounded h-[42px]"
-//                   >
-//                     <option value="">Pilih Item</option>
-
-//                     {/* Selalu full list */}
-//                     <For each={itemsOptions()}>
-//                       {(opt) => (
-//                         <option value={String(opt.id)}>
-//                           {opt.asset_code} - {opt.asset_name ?? opt.name}
-//                         </option>
-//                       )}
-//                     </For>
-//                   </select>
-
-//                   {/* QTY */}
-//                   <input
-//                     type="number"
-//                     min="1"
-//                     value={it.qty}
-//                     onInput={(e) =>
-//                       updateItem(i(), "qty", e.currentTarget.value)
-//                     }
-//                     class="border p-2 rounded w-full h-[42px]"
-//                   />
-
-//                   {/* Notes + Delete */}
-//                   <div class="flex gap-2 items-center">
-//                     <input
-//                       placeholder="Notes"
-//                       value={it.notes}
-//                       onInput={(e) =>
-//                         updateItem(i(), "notes", e.currentTarget.value)
-//                       }
-//                       class="border p-2 rounded flex-1 h-[42px]"
-//                     />
-//                     <button
-//                       type="button"
-//                       class="text-red-600"
-//                       onClick={() => removeItem(i())}
-//                     >
-//                       <Trash size={22} />
-//                     </button>
-//                   </div>
-//                 </div>
-//               )}
-//             </For>
-//           </div>
-//         </div>
-
-//         {/* Submit */}
-//         <div class="flex gap-2">
-//           <button
-//             type="submit"
-//             class="bg-blue-600 text-white px-4 py-2 rounded"
-//           >
-//             {isEdit ? "Update" : "Simpan"}
-//           </button>
-//           <button
-//             type="button"
-//             class="bg-gray-300 px-4 py-2 rounded"
-//             onClick={() => navigate("/admin/load-out")}
-//           >
-//             Batal
-//           </button>
-//         </div>
-//       </form>
-//     </div>
-//   );
-// }
-
 import { createSignal, onMount, For, onCleanup, createMemo } from "solid-js";
 import { useNavigate, useParams } from "@solidjs/router";
 import Swal from "sweetalert2";
@@ -333,12 +5,27 @@ import { LoadOutService } from "../../../services/loadOut";
 import { ItemsService } from "../../../services/items";
 import { EventsService } from "../../../services/events";
 import { LocationsService } from "../../../services/locations";
-import { Trash } from "lucide-solid";
+import {
+  Trash2,
+  PackageMinus,
+  Calendar,
+  User,
+  FileText,
+  Search,
+  Barcode,
+  Plus,
+  Save,
+} from "lucide-solid"; // Pake icon PackageMinus buat Load Out
 
-export default function LoadingInCreate() {
+export default function LoadingOutCreate() {
+  // Nama komponen dibenerin
   const params = useParams();
   const navigate = useNavigate();
   const isEdit = !!params.id;
+
+  // ===== ANIMATION STATE =====
+  const [isMounted, setIsMounted] = createSignal(false);
+  const [loading, setLoading] = createSignal(false);
 
   const defaultForm = {
     event_id: "",
@@ -355,11 +42,13 @@ export default function LoadingInCreate() {
   const [scanBuffer, setScanBuffer] = createSignal("");
   const [itemSearch, setItemSearch] = createSignal("");
 
-  // 🔍 Search tapi hanya buat hide/show items list
+  // BIKIN ROW ID UNIQUE BIAR GAK BUG PAS DI SEARCH
+  const generateRowId = () => Math.random().toString(36).substr(2, 9);
+
+  // 🔍 Search item
   const filteredFormItems = createMemo(() => {
     const search = itemSearch().toLowerCase();
     const rows = form().items || [];
-
     if (!search) return rows;
 
     return rows.filter((it) => {
@@ -373,6 +62,9 @@ export default function LoadingInCreate() {
   });
 
   onMount(async () => {
+    // Animasi muncul
+    setTimeout(() => setIsMounted(true), 50);
+
     try {
       const [resItems, resEvents, resLocations] = await Promise.all([
         ItemsService.list(),
@@ -389,61 +81,35 @@ export default function LoadingInCreate() {
 
     // EDIT MODE
     if (isEdit) {
-      const res = await LoadOutService.get(params.id);
-      let data = res.data?.data || res.data || res;
+      try {
+        const res = await LoadOutService.get(params.id);
+        let data = res.data?.data || res.data || res;
+        if (Array.isArray(data)) data = data[0];
 
-      if (Array.isArray(data)) data = data[0];
-      if (typeof data === "object" && data !== null && data[0]) data = data[0];
-
-      setForm({
-        event_id: data?.event_id ?? "",
-        pic_load_out: data?.pic_load_out ?? "",
-        load_out_date: data?.load_out_date ?? "",
-        load_out_notes: data?.load_out_notes ?? "",
-        items: (data?.items ?? []).map((it) => ({
-          item_id: String(it.item_id),
-          qty: it.qty || 1,
-          notes: it.load_out_item_notes || "",
-          location_id: String(it.location_id || ""),
-          location_notes: it.location_notes || "",
-        })),
-      });
+        setForm({
+          event_id: data?.event_id ?? "",
+          pic_load_out: data?.pic_load_out ?? "",
+          load_out_date: data?.load_out_date ?? "",
+          load_out_notes: data?.load_out_notes ?? "",
+          items: (data?.items ?? []).map((it) => ({
+            row_id: generateRowId(), // Kasih ID unik
+            item_id: String(it.item_id),
+            qty: it.qty || 1,
+            notes: it.load_out_item_notes || "",
+            location_id: String(it.location_id || ""),
+            location_notes: it.location_notes || "",
+          })),
+        });
+      } catch (err) {
+        console.error(err);
+      }
     }
 
-    // Scanner fisik
+    // Scanner fisik listener
     const handleKey = (e) => {
       if (e.key === "Enter") {
         e.preventDefault();
-        const code = scanBuffer().trim();
-        if (!code) return;
-
-        const found = itemsOptions().find(
-          (it) =>
-            it.asset_code?.toLowerCase() === code.toLowerCase() ||
-            it.asset_name?.toLowerCase() === code.toLowerCase()
-        );
-
-        if (found) {
-          addItem(found.id);
-          Swal.fire({
-            icon: "success",
-            title: "Item ditambahkan",
-            text: `${found.asset_code} - ${found.asset_name}`,
-            timer: 800,
-            showConfirmButton: false,
-          });
-        } else {
-          Swal.fire({
-            icon: "warning",
-            title: "Item tidak ditemukan",
-            text: code,
-            timer: 1000,
-            showConfirmButton: false,
-          });
-        }
-
-        handleAddByCode(code);
-
+        handleAddByCode(scanBuffer().trim());
         setScanBuffer("");
       } else {
         setScanBuffer((prev) => prev + e.key);
@@ -454,7 +120,6 @@ export default function LoadingInCreate() {
     onCleanup(() => window.removeEventListener("keypress", handleKey));
   });
 
-  // Update field utama
   const updateField = (key, val) => {
     if (key === "event_id") {
       const selectedEvent = eventsOptions().find((ev) => ev.id == val);
@@ -473,11 +138,9 @@ export default function LoadingInCreate() {
     }
   };
 
-  // Tambah item
   const addItem = (itemId = "") => {
     const foundItem = itemsOptions().find((it) => it.id == itemId);
     const currentEvent = eventsOptions().find((ev) => ev.id == form().event_id);
-
     const defaultLocation =
       currentEvent?.location_id || foundItem?.location_id || "";
 
@@ -486,6 +149,7 @@ export default function LoadingInCreate() {
       items: [
         ...prev.items,
         {
+          row_id: generateRowId(),
           item_id: String(itemId),
           qty: 1,
           notes: foundItem?.notes || "",
@@ -497,49 +161,62 @@ export default function LoadingInCreate() {
 
   const handleAddByCode = (code) => {
     if (!code) return;
-
     const found = itemsOptions().find(
       (it) =>
         it.asset_code?.toLowerCase() === code.toLowerCase() ||
-        it.asset_name?.toLowerCase() === code.toLowerCase()
+        it.asset_name?.toLowerCase() === code.toLowerCase(),
     );
 
     if (found) {
       addItem(found.id);
       Swal.fire({
         icon: "success",
-        title: "Item ditambahkan",
+        title: "Item Ditambahkan",
         text: `${found.asset_code} - ${found.asset_name}`,
-        timer: 800,
+        timer: 1000,
         showConfirmButton: false,
       });
     } else {
       Swal.fire({
         icon: "warning",
-        title: "Item tidak ditemukan",
-        text: code,
-        timer: 1000,
+        title: "Tidak Ditemukan",
+        text: `Kode: ${code}`,
+        timer: 1500,
         showConfirmButton: false,
       });
     }
   };
 
-  const updateItem = (idx, key, val) =>
-    setForm((prev) => {
-      const arr = prev.items.map((it, i) =>
-        i === idx ? { ...it, [key]: val } : it
-      );
-      return { ...prev, items: arr };
-    });
-
-  const removeItem = (idx) =>
+  // UPDATE & REMOVE BY ROW_ID BIAR AMAN DARI BUG FILTER
+  const updateItem = (rowId, key, val) => {
     setForm((prev) => ({
       ...prev,
-      items: prev.items.filter((_, i) => i !== idx),
+      items: prev.items.map((it) =>
+        it.row_id === rowId ? { ...it, [key]: val } : it,
+      ),
     }));
+  };
+
+  const removeItem = (rowId) => {
+    setForm((prev) => ({
+      ...prev,
+      items: prev.items.filter((it) => it.row_id !== rowId),
+    }));
+  };
 
   const submit = async (e) => {
     e.preventDefault();
+
+    if (!form().event_id) {
+      return Swal.fire({
+        icon: "warning",
+        title: "Peringatan",
+        text: "Event belum dipilih!",
+        confirmButtonColor: "#000",
+      });
+    }
+
+    setLoading(true);
     try {
       const payload = {
         ...form(),
@@ -547,226 +224,355 @@ export default function LoadingInCreate() {
           item_id: it.item_id,
           location_id: it.location_id,
           load_out_item_notes: it.notes || "",
+          qty: it.qty,
         })),
       };
 
       if (isEdit) {
         await LoadOutService.update(params.id, payload);
-        Swal.fire("Berhasil", "Data berhasil diupdate", "success");
+        Swal.fire({
+          icon: "success",
+          title: "Berhasil",
+          text: "Data berhasil diupdate ✅",
+          confirmButtonColor: "#10b981",
+        });
       } else {
         await LoadOutService.create(payload);
-        Swal.fire("Berhasil", "Data berhasil disimpan", "success");
+        Swal.fire({
+          icon: "success",
+          title: "Berhasil",
+          text: "Data berhasil disimpan ✅",
+          confirmButtonColor: "#10b981",
+        });
       }
 
       navigate("/admin/load-out");
     } catch (err) {
       console.error("Submit error:", err);
-      Swal.fire("Gagal", "Terjadi kesalahan", "error");
+      Swal.fire({
+        icon: "error",
+        title: "Gagal",
+        text: "Terjadi kesalahan saat menyimpan ❌",
+        confirmButtonColor: "#ef4444",
+      });
     }
+    setLoading(false);
   };
 
-  return (
-    <div class="p-6 space-y-4">
-      <h1 class="text-2xl font-bold">
-        {isEdit ? "Edit Loading Out" : "Create Loading Out"}
-      </h1>
+  // ===== BASE CSS =====
+  const baseInput =
+    "w-full px-4 py-2.5 rounded-xl text-sm transition-all duration-200 outline-none border bg-gray-50/50 border-gray-200 focus:border-gray-400 focus:ring-4 focus:ring-gray-100";
+  const baseLabel =
+    "block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 flex items-center gap-2";
 
-      {/* Scanner input */}
+  return (
+    <div class="p-6 bg-gray-50/50 min-h-screen font-sans">
+      <style>{`
+        @keyframes slideInUp {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-item {
+          animation: slideInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+      `}</style>
+
+      {/* Hidden Scanner */}
       <input
         type="text"
         class="opacity-0 absolute pointer-events-none"
         autofocus
       />
 
-      <form class="space-y-4" onSubmit={submit}>
-        <div class="grid grid-cols-3 gap-3">
-          {/* Event */}
+      <div
+        class={`max-w-6xl mx-auto transition-all duration-700 ease-out transform ${isMounted() ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
+      >
+        {/* HEADER */}
+        <div class="flex items-center gap-4 mb-8">
+          <div class="w-12 h-12 bg-black rounded-2xl shadow-lg flex items-center justify-center text-white">
+            <PackageMinus size={24} />
+          </div>
           <div>
-            <label class="block mb-1">Event</label>
-            <select
-              value={form().event_id}
-              onInput={(e) => updateField("event_id", e.currentTarget.value)}
-              class="border w-full rounded px-3 h-10"
-            >
-              <option value="">Pilih Event</option>
-              <For each={eventsOptions()}>
-                {(ev) => (
-                  <option value={ev.id}>{ev.event_name || ev.name}</option>
+            <h1 class="text-3xl font-bold text-gray-800 tracking-tight">
+              {isEdit ? "Edit Loading Out" : "Create Loading Out"}
+            </h1>
+            <p class="text-sm text-gray-500 mt-1">
+              Catat barang keluar (Load-Out) dari inventory.
+            </p>
+          </div>
+        </div>
+
+        <form onSubmit={submit} class="space-y-6">
+          {/* ================= BASIC INFO ================= */}
+          <div class="bg-white p-6 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100">
+            <h2 class="text-sm font-bold text-gray-800 mb-6 flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+              Informasi Umum
+            </h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+              <div>
+                <label class={baseLabel}>
+                  <Calendar size={14} /> Event
+                </label>
+                <select
+                  value={form().event_id}
+                  onInput={(e) =>
+                    updateField("event_id", e.currentTarget.value)
+                  }
+                  class={baseInput}
+                >
+                  <option value="" disabled>
+                    Pilih Event...
+                  </option>
+                  <For each={eventsOptions()}>
+                    {(ev) => (
+                      <option value={ev.id}>{ev.event_name || ev.name}</option>
+                    )}
+                  </For>
+                </select>
+              </div>
+
+              <div>
+                <label class={baseLabel}>
+                  <User size={14} /> PIC Load Out
+                </label>
+                <input
+                  type="text"
+                  placeholder="Nama PIC"
+                  value={form().pic_load_out}
+                  onInput={(e) =>
+                    updateField("pic_load_out", e.currentTarget.value)
+                  }
+                  class={baseInput}
+                />
+              </div>
+
+              <div>
+                <label class={baseLabel}>
+                  <Calendar size={14} /> Load Out Date
+                </label>
+                <input
+                  type="date"
+                  value={form().load_out_date}
+                  onInput={(e) =>
+                    updateField("load_out_date", e.currentTarget.value)
+                  }
+                  class={baseInput}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label class={baseLabel}>
+                <FileText size={14} /> Notes
+              </label>
+              <textarea
+                placeholder="Tambahkan catatan jika perlu..."
+                value={form().load_out_notes}
+                onInput={(e) =>
+                  updateField("load_out_notes", e.currentTarget.value)
+                }
+                class={`${baseInput} min-h-[80px]`}
+              />
+            </div>
+          </div>
+
+          {/* ================= ITEMS SECTION ================= */}
+          <div class="bg-white p-6 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+              <h2 class="text-sm font-bold text-gray-800 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-orange-500"></span>{" "}
+                {/* Pake aksen orange biar beda sama load-in */}
+                Daftar Item
+              </h2>
+
+              <div class="flex flex-wrap gap-3 w-full md:w-auto">
+                {/* Search Box */}
+                <div class="relative flex-1 md:flex-none">
+                  <Search
+                    size={16}
+                    class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Cari di list..."
+                    class={`${baseInput} pl-9 w-full md:w-48`}
+                    onInput={(e) => setItemSearch(e.currentTarget.value)}
+                  />
+                </div>
+
+                {/* Barcode / Manual Add */}
+                <div class="relative flex-1 md:flex-none">
+                  <Barcode
+                    size={16}
+                    class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Scan Barcode..."
+                    class={`${baseInput} pl-9 w-full md:w-56 border-blue-200 focus:border-blue-400`}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddByCode(e.currentTarget.value);
+                        e.currentTarget.value = "";
+                      }
+                    }}
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => addItem()}
+                  disabled={!form().event_id}
+                  class="flex items-center gap-2 bg-black text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-800 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Plus size={16} /> Add Item
+                </button>
+              </div>
+            </div>
+
+            {/* List Header (Desktop Only) */}
+            <div class="hidden md:grid grid-cols-12 gap-3 px-4 mb-2 text-xs font-bold text-gray-400 uppercase tracking-widest">
+              <div class="col-span-4">Asset / Item</div>
+              <div class="col-span-3">Location</div>
+              <div class="col-span-1 text-center">Qty</div>
+              <div class="col-span-3">Notes</div>
+              <div class="col-span-1 text-center">Aksi</div>
+            </div>
+
+            {/* Item Rows */}
+            <div class="max-h-[400px] overflow-y-auto custom-scrollbar space-y-3 pr-2">
+              <Show when={filteredFormItems().length === 0}>
+                <div class="p-8 text-center border-2 border-dashed border-gray-200 rounded-xl">
+                  <p class="text-gray-400 font-medium">
+                    Belum ada item ditambahkan.
+                  </p>
+                  <p class="text-xs text-gray-400 mt-1">
+                    Pilih event dan scan barcode atau tambah manual.
+                  </p>
+                </div>
+              </Show>
+
+              <For each={filteredFormItems()}>
+                {(it) => (
+                  <div class="animate-item bg-gray-50/50 border border-gray-100 p-3 rounded-xl grid grid-cols-1 md:grid-cols-12 gap-3 items-center hover:shadow-sm hover:border-gray-200 transition-all">
+                    <div class="col-span-4">
+                      <select
+                        value={it.item_id}
+                        class={baseInput}
+                        onInput={(e) =>
+                          updateItem(
+                            it.row_id,
+                            "item_id",
+                            e.currentTarget.value,
+                          )
+                        }
+                      >
+                        <option value="" disabled>
+                          Pilih Item...
+                        </option>
+                        <For each={itemsOptions()}>
+                          {(opt) => (
+                            <option value={opt.id}>
+                              {opt.asset_code} - {opt.asset_name}
+                            </option>
+                          )}
+                        </For>
+                      </select>
+                    </div>
+
+                    <div class="col-span-3">
+                      <select
+                        value={it.location_id}
+                        class={baseInput}
+                        onInput={(e) =>
+                          updateItem(
+                            it.row_id,
+                            "location_id",
+                            e.currentTarget.value,
+                          )
+                        }
+                      >
+                        <option value="" disabled>
+                          Pilih Lokasi...
+                        </option>
+                        <For each={locationsOptions()}>
+                          {(loc) => (
+                            <option value={loc.id}>{loc.location_name}</option>
+                          )}
+                        </For>
+                      </select>
+                    </div>
+
+                    <div class="col-span-1">
+                      <input
+                        type="number"
+                        min="1"
+                        value={it.qty}
+                        class={`${baseInput} text-center`}
+                        onInput={(e) =>
+                          updateItem(it.row_id, "qty", e.currentTarget.value)
+                        }
+                      />
+                    </div>
+
+                    <div class="col-span-3">
+                      <input
+                        type="text"
+                        placeholder="Kondisi / Catatan"
+                        value={it.notes}
+                        class={baseInput}
+                        onInput={(e) =>
+                          updateItem(it.row_id, "notes", e.currentTarget.value)
+                        }
+                      />
+                    </div>
+
+                    <div class="col-span-1 flex justify-center">
+                      <button
+                        type="button"
+                        onClick={() => removeItem(it.row_id)}
+                        class="p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg hover:rotate-12 active:scale-90 transition-all"
+                      >
+                        <Trash2 size={20} />
+                      </button>
+                    </div>
+                  </div>
                 )}
               </For>
-            </select>
-          </div>
-
-          {/* PIC */}
-          <div>
-            <label class="block mb-1">PIC Load In</label>
-            <input
-              value={form().pic_load_out}
-              onInput={(e) =>
-                updateField("pic_load_out", e.currentTarget.value)
-              }
-              class="border w-full rounded px-3 h-10"
-            />
-          </div>
-
-          {/* Date */}
-          <div>
-            <label class="block mb-1">Load In Date</label>
-            <input
-              type="date"
-              value={form().load_out_date}
-              onInput={(e) =>
-                updateField("load_out_date", e.currentTarget.value)
-              }
-              class="border w-full rounded px-3 h-10"
-            />
-          </div>
-        </div>
-
-        {/* Notes */}
-        <div>
-          <label class="block mb-1">Notes</label>
-          <textarea
-            value={form().load_out_notes}
-            onInput={(e) =>
-              updateField("load_out_notes", e.currentTarget.value)
-            }
-            class="border p-2 w-full rounded"
-          />
-        </div>
-
-        {/* Items */}
-        <div>
-          <div class="flex justify-between items-center mb-2">
-            <div>
-              <h3 class="font-semibold mb-2">Items</h3>
-
-              {/* Search hanya hide/show */}
-              <input
-                type="text"
-                placeholder="Cari item..."
-                class="border px-3 py-2 rounded w-60"
-                onInput={(e) => setItemSearch(e.currentTarget.value)}
-              />
-            </div>
-
-            <div class="flex gap-2 items-center">
-              {/* MANUAL INPUT */}
-              <input
-                type="text"
-                placeholder="Scan / ketik asset code"
-                class="border px-3 py-2 rounded w-64"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleAddByCode(e.currentTarget.value);
-                    e.currentTarget.value = "";
-                  }
-                }}
-              />
-
-              <button
-                type="button"
-                class="text-blue-600 border px-3 py-2 rounded h-10"
-                onClick={() => addItem()}
-                disabled={!form().event_id}
-              >
-                + Add Item
-              </button>
             </div>
           </div>
 
-          {/* LIST ROW YG DI FILTER */}
-          <div class="max-h-[350px] overflow-y-auto space-y-2 pr-2 border border-black p-3 rounded">
-            <For each={filteredFormItems()}>
-              {(it, i) => (
-                <div class="grid grid-cols-4 gap-2 border p-2 rounded items-center bg-white">
-                  {/* Item */}
-                  <select
-                    value={it.item_id}
-                    class="border p-2 rounded"
-                    onInput={(e) =>
-                      updateItem(i(), "item_id", e.currentTarget.value)
-                    }
-                  >
-                    <option value="">Pilih Item</option>
-                    <For each={itemsOptions()}>
-                      {(opt) => (
-                        <option value={opt.id}>
-                          {opt.asset_code} - {opt.asset_name}
-                        </option>
-                      )}
-                    </For>
-                  </select>
-
-                  {/* Location */}
-                  <select
-                    value={it.location_id}
-                    class="border p-2 rounded"
-                    onInput={(e) =>
-                      updateItem(i(), "location_id", e.currentTarget.value)
-                    }
-                  >
-                    <option value="">Pilih Lokasi</option>
-                    <For each={locationsOptions()}>
-                      {(loc) => (
-                        <option value={loc.id}>{loc.location_name}</option>
-                      )}
-                    </For>
-                  </select>
-
-                  {/* Qty */}
-                  <input
-                    type="number"
-                    min="1"
-                    value={it.qty}
-                    class="border p-2 rounded"
-                    onInput={(e) =>
-                      updateItem(i(), "qty", e.currentTarget.value)
-                    }
-                  />
-
-                  {/* Notes + Delete */}
-                  <div class="flex gap-2 items-center">
-                    <input
-                      placeholder="Notes"
-                      value={it.notes}
-                      class="border p-2 rounded flex-1"
-                      onInput={(e) =>
-                        updateItem(i(), "notes", e.currentTarget.value)
-                      }
-                    />
-                    <button
-                      type="button"
-                      class="text-red-600"
-                      onClick={() => removeItem(i())}
-                    >
-                      <Trash size={22} />
-                    </button>
-                  </div>
-                </div>
+          {/* ================= ACTION BUTTONS ================= */}
+          <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
+            <button
+              type="button"
+              onClick={() => navigate("/admin/load-out")}
+              class="px-6 py-2.5 font-medium text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 hover:text-gray-900 active:scale-95 transition-all"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading()}
+              class="flex items-center gap-2 px-8 py-2.5 font-medium bg-blue-600 text-white rounded-xl hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-600/20 hover:-translate-y-0.5 active:scale-95 disabled:opacity-70 disabled:hover:translate-y-0 transition-all"
+            >
+              {loading() ? (
+                <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              ) : (
+                <Save size={18} />
               )}
-            </For>
+              {isEdit ? "Update Data" : "Simpan Data"}
+            </button>
           </div>
-        </div>
-
-        {/* Submit */}
-        <div class="flex gap-2">
-          <button
-            type="submit"
-            class="bg-blue-600 text-white px-4 py-2 rounded"
-          >
-            {isEdit ? "Update" : "Simpan"}
-          </button>
-          <button
-            type="button"
-            class="bg-gray-300 px-4 py-2 rounded"
-            onClick={() => navigate("/admin/load-out")}
-          >
-            Batal
-          </button>
-        </div>
-      </form>
+        </form>
+      </div>
     </div>
   );
 }

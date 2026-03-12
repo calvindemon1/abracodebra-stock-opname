@@ -24,6 +24,6 @@
     "lucide-solid": "^0.552.0",
     "qrcode": "^1.5.4",
     "solid-js": "^1.9.9",
-    "sweetalert2": "^11.26.3"
+    "sweetalert2": "^11.26.21"
   }
 }

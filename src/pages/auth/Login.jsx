@@ -1,117 +1,179 @@
+import { createSignal, onMount, Show } from "solid-js";
 import { useNavigate } from "@solidjs/router";
-import { createSignal } from "solid-js";
 import Swal from "sweetalert2";
 import { login } from "../../utils/auth";
+import { UsersService } from "../../services/users";
+import { User, Lock, LogIn } from "lucide-solid";
+import logoAbra from "../../assets/img/logo-abracodebra.png";
 
 export default function Login() {
   const navigate = useNavigate();
-  const [email, setEmail] = createSignal("");
-  const [password, setPassword] = createSignal("");
 
-  const handleSubmit = (e) => {
+  // State cuma butuh buat login
+  const [username, setUsername] = createSignal("");
+  const [password, setPassword] = createSignal("");
+  const [loading, setLoading] = createSignal(false);
+  const [isMounted, setIsMounted] = createSignal(false);
+
+  onMount(() => {
+    setTimeout(() => setIsMounted(true), 100);
+  });
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!email() || !password()) {
+    // Validasi basic
+    if (!username() || !password()) {
       Swal.fire({
         icon: "warning",
-        title: "Oops...",
-        text: "Email dan password wajib diisi!",
+        title: "Form Belum Lengkap",
+        text: "Username dan password wajib diisi!",
+        confirmButtonColor: "#000",
       });
       return;
     }
 
-    // fake login
-    login("dummy-token");
+    setLoading(true);
+    try {
+      const response = await UsersService.login({
+        username: username(),
+        password: password(),
+      });
 
-    Swal.fire({
-      icon: "success",
-      title: "Berhasil Login!",
-      timer: 1500,
-      showConfirmButton: false,
-    });
+      // Pastikan path 'response.data.token' ini sesuai dengan balasan backend lu
+      const token = response.data?.token || response?.token;
+      if (!token) throw new Error("Token tidak ditemukan pada response API");
 
-    setTimeout(() => {
-      navigate("/admin");
-    }, 1500);
+      login(token); // Set token ke cookies/localstorage
+
+      await Swal.fire({
+        icon: "success",
+        title: "Login Berhasil!",
+        text: "Anda akan diarahkan ke dashboard...",
+        timer: 1500,
+        showConfirmButton: false,
+        timerProgressBar: true,
+      });
+
+      navigate("/admin/asset");
+    } catch (err) {
+      console.error("Login Gagal:", err);
+      const errorMessage =
+        err.response?.data?.message ||
+        err.message ||
+        "Username atau password salah. Silakan coba lagi.";
+
+      Swal.fire({
+        icon: "error",
+        title: "Login Gagal!",
+        text: errorMessage,
+        confirmButtonColor: "#ef4444",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div class="flex items-center justify-center w-screen min-h-screen bg-gray-100">
-      <form
-        class="bg-white shadow-2xl p-10 rounded-xl flex flex-col gap-6 w-96"
-        onSubmit={handleSubmit}
+    <div class="relative w-screen min-h-screen flex items-center justify-center bg-[#0a0a0a] overflow-hidden p-4">
+      {/* Background Animasi */}
+      <style>{`
+        .animated-gradient-bg::before {
+          content: '';
+          position: absolute;
+          inset: -100px;
+          opacity: 0.15;
+          z-index: 1;
+          background: radial-gradient(circle at 10% 20%, #4f46e5, transparent 40%),
+                      radial-gradient(circle at 80% 90%, #2563eb, transparent 40%),
+                      radial-gradient(circle at 50% 50%, #4a5568, transparent 50%);
+          background-size: 200% 200%;
+          animation: gradient-move 20s linear infinite;
+        }
+
+        @keyframes gradient-move {
+          0% { background-position: 0% 0%; }
+          50% { background-position: 100% 100%; }
+          100% { background-position: 0% 0%; }
+        }
+      `}</style>
+
+      <div class="animated-gradient-bg"></div>
+
+      <div
+        class={`z-10 w-full max-w-md transition-all duration-700 ease-out transform ${
+          isMounted() ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+        }`}
       >
-        <h2 class="text-3xl font-bold text-center text-gray-800">Login</h2>
-
-        <div class="flex flex-col gap-4">
-          <div class="relative">
-            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-              📧
-            </span>
-            <input
-              class="border p-3 pl-10 rounded-lg w-full focus:ring-2 focus:ring-blue-400 focus:outline-none"
-              placeholder="Email"
-              type="email"
-              onInput={(e) => setEmail(e.target.value)}
-            />
+        <div class="bg-gray-900/50 backdrop-blur-xl p-8 rounded-2xl border border-white/10 shadow-2xl space-y-8">
+          {/* Header */}
+          <div class="text-center">
+            <div class="w-full flex justify-center items-center h-16 mb-4 overflow-hidden">
+              <img
+                src={logoAbra}
+                class="h-32 object-contain scale-200"
+                alt="Logo Abra"
+              />
+            </div>
+            <h2 class="text-2xl font-bold text-white tracking-tight">
+              Welcome Back
+            </h2>
+            <p class="text-sm text-gray-400 mt-1">Please sign in to continue</p>
           </div>
 
-          <div class="relative">
-            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-              🔒
-            </span>
-            <input
-              class="border p-3 pl-10 rounded-lg w-full focus:ring-2 focus:ring-blue-400 focus:outline-none"
-              type="password"
-              placeholder="Password"
-              onInput={(e) => setPassword(e.target.value)}
-            />
-          </div>
+          {/* Form */}
+          <form onSubmit={handleSubmit} class="space-y-6">
+            <div class="space-y-4">
+              {/* Username Input */}
+              <div class="relative">
+                <User
+                  size={18}
+                  class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"
+                />
+                <input
+                  type="text"
+                  placeholder="Username"
+                  value={username()}
+                  onInput={(e) => setUsername(e.target.value)}
+                  class="w-full bg-white/5 border border-white/10 text-gray-200 placeholder-gray-500 rounded-lg py-3 pl-11 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
+                />
+              </div>
+
+              {/* Password Input */}
+              <div class="relative">
+                <Lock
+                  size={18}
+                  class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"
+                />
+                <input
+                  type="password"
+                  placeholder="Password"
+                  value={password()}
+                  onInput={(e) => setPassword(e.target.value)}
+                  class="w-full bg-white/5 border border-white/10 text-gray-200 placeholder-gray-500 rounded-lg py-3 pl-11 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
+                />
+              </div>
+            </div>
+
+            {/* Tombol Submit */}
+            <button
+              type="submit"
+              disabled={loading()}
+              class="w-full flex items-center justify-center gap-2 bg-blue-600 text-white font-semibold py-3 rounded-lg hover:bg-blue-700 hover:-translate-y-0.5 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-wait disabled:hover:translate-y-0"
+            >
+              <Show
+                when={!loading()}
+                fallback={
+                  <div class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                }
+              >
+                <LogIn size={18} />
+                <span>Sign In</span>
+              </Show>
+            </button>
+          </form>
         </div>
-
-        <button class="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-lg font-semibold transition">
-          Login
-        </button>
-      </form>
+      </div>
     </div>
   );
 }
-
-// import logoAbra from "../../assets/img/logo-abracodebra.png";
-
-// // 🔥 Generate binary random dengan spasi antar grup
-// function generateRandomBinaryRow(groups = 40) {
-//   let row = "";
-//   for (let i = 0; i < groups; i++) {
-//     const groupSize = Math.floor(Math.random() * 4) + 4; // 4–8 digit
-//     let group = "";
-//     for (let j = 0; j < groupSize; j++) {
-//       group += Math.random() > 0.5 ? "1" : "0";
-//     }
-//     row += group + " ";
-//   }
-//   return row;
-// }
-
-// export default function Login() {
-//   const binaryRows = Array(300)
-//     .fill(0)
-//     .map(() => generateRandomBinaryRow())
-//     .join("\n");
-
-//   return (
-//     <div class="relative w-screen h-screen flex items-center justify-center bg-[#000519] overflow-hidden">
-//       {/* Hacker Random Binary Background */}
-//       <div
-//         class="absolute inset-0 opacity-25 pointer-events-none animate-binary
-//                text-[#37ff00] font-mono text-[25px]"
-//         style="white-space: pre; line-height: 1.05; letter-spacing: 0.5em;"
-//       >
-//         {binaryRows + "\n" + binaryRows}
-//       </div>
-
-//       {/* Logo */}
-//       <img src={logoAbra} alt="logo" class="z-10 scale-125" />
-//     </div>
-//   );
-// }

@@ -1,9 +1,11 @@
+import logoAbra from "../../assets/img/logogram-abracodebra.png";
+
 export default function Navbar() {
   return (
     <header class="py-4 pr-4">
       <div
         class="
-          bg-white 
+          bg-[#0a0a0a]
           shadow-lg 
           rounded-xl 
           px-6 py-3 
@@ -13,13 +15,15 @@ export default function Navbar() {
           w-full
         "
       >
-        <h1 class="font-semibold text-lg text-gray-800">Dashboard</h1>
+        <h1 class="font-semibold text-lg text-white">Dashboard</h1>
 
         <div class="flex items-center gap-3">
-          <span class="text-gray-600">Hi, Admin 👋</span>
+          <span class="text-white">Hi, Admin 👋</span>
 
           {/* avatar circle */}
-          <div class="w-9 h-9 bg-gray-300 rounded-full"></div>
+          <div class="w-9 h-9 bg-black rounded-full">
+            <img src={logoAbra} class="scale-125" alt="Avatar" />
+          </div>
         </div>
       </div>
     </header>

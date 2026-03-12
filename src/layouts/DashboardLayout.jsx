@@ -7,11 +7,19 @@ export default function DashboardLayout(props) {
   if (!isLoggedIn()) return <Navigate href="/login" />;
 
   return (
-    <div class="flex min-h-screen bg-gray-100">
+    // 1. Ganti min-h-screen jadi h-screen
+    // 2. Tambah overflow-hidden biar parent-nya nge-lock layout
+    <div class="flex h-screen bg-gray-100 overflow-hidden w-full">
       <Sidebar />
-      <div class="flex-1 flex flex-col">
+
+      {/* 3. Kasih overflow-hidden juga di kolom kanannya */}
+      <div class="flex-1 flex flex-col overflow-hidden relative">
         <Navbar />
-        <main class="p-6 flex-1 bg-gray-100">{props.children}</main>
+
+        {/* main-nya tetap flex-1 dan overflow-y-auto */}
+        <main class="p-6 flex-1 bg-gray-100 overflow-y-auto custom-scrollbar">
+          {props.children}
+        </main>
       </div>
     </div>
   );

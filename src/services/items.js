@@ -13,19 +13,19 @@ export const ItemsService = {
         data = data.filter(
           (item) =>
             item.asset_name.toLowerCase().includes(search.toLowerCase()) ||
-            item.asset_code.toLowerCase().includes(search.toLowerCase())
+            item.asset_code.toLowerCase().includes(search.toLowerCase()),
         );
 
       // 📍 Filter location
       if (location)
         data = data.filter(
-          (item) => String(item.location_id) === String(location)
+          (item) => String(item.location_id) === String(location),
         );
 
       // ⚙️ Filter condition
       if (condition)
         data = data.filter(
-          (item) => String(item.condition_id) === String(condition)
+          (item) => String(item.condition_id) === String(condition),
         );
 
       // 🔽 Sorting
@@ -53,5 +53,22 @@ export const ItemsService = {
   },
   delete(id) {
     return api.delete(`/items/${id}`);
+  },
+  async export() {
+    const response = await fetch(
+      "https://14grftw2-3212.asse.devtunnels.ms/api/items/export",
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error("Gagal download file");
+    }
+
+    return await response.blob();
   },
 };
